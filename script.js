@@ -1,13 +1,28 @@
 // Futuristic Interactive Effects for Profitworx
 
 // Mobile Navigation Toggle
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const navToggle = document.querySelector('.nav-toggle');
 const navMenu = document.querySelector('.nav-menu');
 
 if (navToggle && navMenu) {
-    navToggle.addEventListener('click', () => {
+    // basic a11y hints
+    navToggle.setAttribute('role', 'button');
+    navToggle.setAttribute('aria-label', 'Toggle menu');
+    navToggle.setAttribute('aria-expanded', 'false');
+    const toggleMenu = () => {
         navMenu.classList.toggle('active');
         navToggle.classList.toggle('active');
+        const expanded = navToggle.getAttribute('aria-expanded') === 'true';
+        navToggle.setAttribute('aria-expanded', String(!expanded));
+    };
+
+    navToggle.addEventListener('click', toggleMenu);
+    navToggle.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            toggleMenu();
+        }
     });
 
     // Close mobile menu when clicking on a link
@@ -19,36 +34,38 @@ if (navToggle && navMenu) {
     });
 }
 
-// Smooth scrolling for navigation links
+// Smooth scrolling for in-page anchors
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         e.preventDefault();
         const target = document.querySelector(this.getAttribute('href'));
         if (target) {
-            const offsetTop = target.offsetTop - 80; // Account for fixed nav height
-            window.scrollTo({
-                top: offsetTop,
-                behavior: 'smooth'
-            });
+            const nav = document.querySelector('.nav');
+            const navHeight = nav ? nav.offsetHeight : 80;
+            const targetY = target.getBoundingClientRect().top + window.pageYOffset - navHeight;
+            window.scrollTo({ top: targetY, behavior: 'smooth' });
         }
     });
 });
 
-// Enhanced scroll effect for navigation with futuristic styling
-window.addEventListener('scroll', () => {
+// Nav scroll class (CSS-driven)
+(() => {
     const nav = document.querySelector('.nav');
-    const scrollY = window.scrollY;
-
-    if (scrollY > 100) {
-        nav.style.background = 'rgba(10, 10, 10, 0.98)';
-        nav.style.boxShadow = '0 5px 30px rgba(0, 212, 255, 0.2)';
-        nav.style.borderBottom = '1px solid rgba(0, 212, 255, 0.3)';
-    } else {
-        nav.style.background = 'rgba(10, 10, 10, 0.95)';
-        nav.style.boxShadow = 'none';
-        nav.style.borderBottom = '1px solid rgba(255, 255, 255, 0.05)';
-    }
-});
+    if (!nav) return;
+    let ticking = false;
+    const onScroll = () => {
+        const scrolled = window.scrollY > 100;
+        nav.classList.toggle('scrolled', scrolled);
+        ticking = false;
+    };
+    window.addEventListener('scroll', () => {
+        if (!ticking) {
+            window.requestAnimationFrame(onScroll);
+            ticking = true;
+        }
+    });
+    onScroll();
+})();
 
 // Particle system for background effect
 class ParticleSystem {
@@ -300,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addBlinkingCursorCSS();
 
     // Initialize particle system
-    if (window.innerWidth > 768) { // Only on larger screens
+    if (!reduceMotion && window.innerWidth > 1024) { // Only on larger screens
         new ParticleSystem();
     }
 
@@ -309,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize typing effect for subtitle
     const subtitle = document.querySelector('.subtitle');
-    if (subtitle) {
+    if (!reduceMotion && subtitle) {
         const originalText = subtitle.textContent;
         setTimeout(() => {
             typeWriter(subtitle, originalText, 50);
@@ -318,16 +335,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize glitch effect for main title
     const mainTitle = document.querySelector('h1');
-    if (mainTitle) {
+    if (!reduceMotion && mainTitle) {
         setTimeout(() => {
             createGlitchEffect(mainTitle);
         }, 500);
     }
 
     // Initialize matrix rain effect
-    setTimeout(() => {
-        createMatrixRain();
-    }, 2000);
+    if (!reduceMotion && window.innerWidth > 1200) {
+        setTimeout(() => {
+            createMatrixRain();
+        }, 2000);
+    }
 
     // Initialize scroll animations
     const animateElements = document.querySelectorAll(
@@ -382,52 +401,27 @@ document.addEventListener('DOMContentLoaded', () => {
     document.head.appendChild(floatStyle);
 });
 
-// Mouse trail effect
-let mouseTrail = [];
-document.addEventListener('mousemove', (e) => {
-    mouseTrail.push({
-        x: e.clientX,
-        y: e.clientY,
-        time: Date.now()
-    });
-
-    // Keep only recent positions
-    mouseTrail = mouseTrail.filter(pos => Date.now() - pos.time < 500);
-
-    // Create trail effect
-    if (mouseTrail.length > 5) {
-        const trail = document.createElement('div');
-        trail.style.position = 'fixed';
-        trail.style.left = e.clientX + 'px';
-        trail.style.top = e.clientY + 'px';
-        trail.style.width = '4px';
-        trail.style.height = '4px';
-        trail.style.background = 'rgba(0, 212, 255, 0.6)';
-        trail.style.borderRadius = '50%';
-        trail.style.pointerEvents = 'none';
-        trail.style.zIndex = '9999';
-        trail.style.transition = 'all 0.5s ease-out';
-
-        document.body.appendChild(trail);
-
-        setTimeout(() => {
-            trail.style.opacity = '0';
-            trail.style.transform = 'scale(0)';
+// Optional mouse trail effect (gated)
+if (!reduceMotion && window.innerWidth > 1200) {
+    let mouseTrail = [];
+    document.addEventListener('mousemove', (e) => {
+        mouseTrail.push({ x: e.clientX, y: e.clientY, time: Date.now() });
+        mouseTrail = mouseTrail.filter(pos => Date.now() - pos.time < 500);
+        if (mouseTrail.length > 5) {
+            const trail = document.createElement('div');
+            Object.assign(trail.style, {
+                position: 'fixed', left: e.clientX + 'px', top: e.clientY + 'px',
+                width: '4px', height: '4px', background: 'rgba(0, 212, 255, 0.6)',
+                borderRadius: '50%', pointerEvents: 'none', zIndex: '9999', transition: 'all 0.5s ease-out'
+            });
+            document.body.appendChild(trail);
             setTimeout(() => {
-                if (trail.parentNode) {
-                    trail.remove();
-                }
-            }, 500);
-        }, 50);
-    }
-});
-
-// Parallax effect for sections
-window.addEventListener('scroll', () => {
-    const scrolled = window.pageYOffset;
-    const rate = scrolled * -0.5;
-
-    document.querySelectorAll('.bg-dark::before, .bg-gradient').forEach(element => {
-        element.style.transform = `translateY(${rate}px)`;
+                trail.style.opacity = '0';
+                trail.style.transform = 'scale(0)';
+                setTimeout(() => trail.parentNode && trail.remove(), 500);
+            }, 50);
+        }
     });
-});
+}
+
+// Removed broken parallax targeting pseudo-elements; consider CSS-only parallax if needed
